@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\BookController;
+use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -18,51 +21,30 @@ use Illuminate\Support\Facades\Route;
     return $request->user();
 });*/
 
-    //route login
-    Route::post('/login', [App\Http\Controllers\Api\Auth\LoginController::class, 'index']);
-    //group route with middleware "auth"
-    Route::group(['middleware' => 'auth:api'], function() {
+// Exclude login and register routes from auth:api middleware
+Route::post('/login', [App\Http\Controllers\Api\Auth\LoginController::class, 'index']);
+Route::post('/register', [App\Http\Controllers\Api\Admin\UserController::class, 'store']);
 
-        //logout
-        Route::post('/logout',
-        [App\Http\Controllers\Api\Auth\LoginController::class, 'logout']);
+// Apply auth:api middleware to all routes
+Route::middleware('auth:api')->group(function () {
 
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    Route::post('/logout', [App\Http\Controllers\Api\Auth\LoginController::class, 'logout']);
+
+    Route::prefix('user')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->middleware(['permission:users.index', 'role:admin,pustakawan']);
+        Route::get('/{id}', [UserController::class, 'show'])->middleware('permission:users.index');
+        Route::post('/create', [UserController::class, 'store'])->middleware('permission:users.create');
+        Route::put('/{id}/update', [UserController::class, 'update'])->middleware('permission:users.edit');
+        Route::delete('/{id}', [UserController::class, 'destroy'])->middleware(['permission:users.delete', 'role:admin,pustakawan']);
     });
 
-    //group route with prefix "admin"
-    Route::prefix('admin')->group(function () {
-        //group route with middleware "auth:api"
-        Route::group(['middleware' => 'auth:api'], function () {
-            //dasboard
-            Route::get('/dashboard',
-            App\Http\Controllers\Api\Admin\DashboardController::class,);
-
-            //permissions
-            Route::get('/permissions',[\App\Http\Controllers\Api\Admin\PermissionController::class, 'index'])->middleware('permission:permissions.index');
-
-            //permission all
-            Route::get('/permissions/all', [\App\Http\Controllers\Api\Admin\PermissionController::class, 'all'])->middleware('permission:permissions.index');
-            
-            //roles all
-            Route::get('/roles/all', [\App\Http\Controllers\Api\Admin\RoleController::class, 'all'])->middleware('permission:role.index');
-
-            //roles
-            Route::apiResource('/roles', App\Http\Controllers\Api\Admin\RoleController::class)->middleware('permission:roles.index|roles.store|roles.update|roles.delete');
-
-            //users
-            Route::apiResource('/users', \App\Http\Controllers\Api\Admin\UserController::class)->middleware('permission:users.index|users.store|users.update|user.delete');
-
-        // //categories all
-        // Route::get('/categories/all', [\App\Http\Controllers\Api\Admin\CategoryController::class, 'all'])->middleware('permission:categories.index');
-
-        // //categories
-        // Route::apiResource('/categories', \App\Http\Controllers\Api\Admin\CategoryController::class)->middleware('permission:categories.index|categories.store|categories.update|categories.delete');        
-
-        //book
-        Route::apiResource('/books', \App\Http\Controllers\Api\Admin\BookController::class)->middleware('permission:books.index|books.store|books.update|books.delete');
-
-        // //Sliders
-        // Route::apiResource('/sliders', \App\Http\Controllers\Api\Admin\SliderController::class,['except' => ['create', 'show', 'update']])->middleware('permission:sliders.index|sliders.store|sliders.delete');
-        
+    Route::prefix('book')->group(function () {
+        Route::get('/', [BookController::class, 'index'])->middleware(['permission:users.index']);
+        Route::get('/{id}', [BookController::class, 'show'])->middleware('permission:users.index');
+        Route::post('/create', [BookController::class, 'store'])->middleware(['permission:users.create', 'role:admin,pustakawan']);
+        Route::put('/{id}/update', [BookController::class, 'update'])->middleware(['permission:users.edit', 'role:admin,pustakawan']);
+        Route::delete('/{id}', [BookController::class, 'destroy'])->middleware(['permission:users.delete', 'role:admin,pustakawan']);
     });
 });

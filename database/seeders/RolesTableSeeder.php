@@ -17,5 +17,15 @@ class RolesTableSeeder extends Seeder
             'name' => 'admin',
             'guard_name' => 'api'
         ]);
+
+        Role::create([
+            'name' => 'pustakawan',
+            'guard_name' => 'api'
+        ]);
+
+        Role::create([
+            'name' => 'anggota',
+            'guard_name' => 'api'
+        ]);
     }
 }

@@ -18,8 +18,8 @@ class UserController extends Controller
     public function index()
     {
         //get user
-        $users = User::when(request()->search, function($users) {
-            $users = $users->where('name', 'like', '%'. request()->search . '%');
+        $users = User::when(request()->search, function ($users) {
+            $users = $users->where('name', 'like', '%' . request()->search . '%');
         })->with('roles')->latest()->paginate(5);
 
         //append query string to pagination links
@@ -61,7 +61,7 @@ class UserController extends Controller
         //assign role to user
         $user->assignRole($request->roles);
 
-        if($user) {
+        if ($user) {
             //return success with Api Resource
             return new UserResource(true, 'Data User Berhasil Disimpan!', $user);
         }
@@ -81,7 +81,7 @@ class UserController extends Controller
         //get user
         $user = User::with('roles')->findOrFail($id)->first();
 
-        if($user) {
+        if ($user) {
             //return success with Api resource
             return new UserResource(true, 'Detail Data User', $user);
         }
@@ -97,23 +97,26 @@ class UserController extends Controller
      * @param int $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, User $user)
+    public function update(Request $request, User $user, $id)
     {
+        // Mengambil kembali data user setelah update
+        $user = User::find($id);
+
         /**
          * validate request
          */
         $validator = Validator::make($request->all(), [
             'name'           => 'required',
-            'email'          => 'required|unique:users,email,'.$user->id,
+            'email'          => 'required|unique:users,email,' . $user->id,
             'password'       => 'confirmed'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-        
-        if($request->password == "") {
-            
+
+        if (!$request->password) {
+
             //update user without password
             $user->update([
                 'name'  => $request->name,
@@ -128,15 +131,16 @@ class UserController extends Controller
             ]);
         }
 
-        //assign roles to user
-        $user->syncRole($request->roles);
+        if ($request->roles) {
+            $user->syncRoles($request->roles);
+        }
 
-        if($user) {
-            //ruturn success with Api Resource
+        if ($user) {
+            // return success with Api Resource and updated user data
             return new UserResource(true, 'Data User Berhasil Diupdate!', $user);
         }
 
-        //return failed with Api Resource
+        // return failed with Api Resource
         return new UserResource(false, 'Data User Gagal Diupdate!', null);
     }
 
@@ -149,7 +153,7 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         //delete role 
-        if($user->delete()) {
+        if ($user->delete()) {
             //return success with Api Resource
             return new UserResource(true, 'Data User Berhasil Dihapus!', null);
         }

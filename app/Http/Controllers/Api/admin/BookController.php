@@ -18,16 +18,16 @@ class BookController extends Controller
      */
     public function index()
     {
-        //get books
-        $books = Book::with('user')->withCount('views')->when(request()->search, function($books) {
-            $books = $books->where('name', 'like', '%'. request()->search . '%');
-        })->where('user_id', auth()->user()->id)->latest()->paginate(5);
+        // Get all books regardless of the user
+        $books = Book::with('user')->withCount('views')->when(request()->search, function ($books) {
+            $books = $books->where('name', 'like', '%' . request()->search . '%');
+        })->latest()->paginate(5);
 
-        //append query string to pagination links
+        // Append query string to pagination links
         $books->appends(['search' => request()->search]);
 
-        //return with Api Resource
-        return new BookResource(true, 'List Data Posts', $books);
+        // Return with Api Resource
+        return new BookResource(true, 'List Data Buku', $books);
     }
 
     /**
@@ -48,9 +48,9 @@ class BookController extends Controller
             'writer' => 'nullable|string',
             'page_amount' => 'nullable|integer',
             'stock_amount' => 'nullable|integer',
-            'published' => 'nullable|date',
+            'published' => 'required',
             'category' => 'nullable|string',
-            'image' => 'required|image|mimes:jpeg,jpg,png|max:2000',
+            'image' => 'required|file|mimes:jpeg,jpg,png|max:2000',
             'status' => 'nullable|string',
         ]);
 
@@ -76,19 +76,19 @@ class BookController extends Controller
             'status' => $request->input('status'),
         ]);
 
-        //push notifications firebase
-        fcm()
-            ->toTopic('push-notifications')
-            ->priority('normal')
-            ->timeToLive(0)
-            ->notification([
-                'titel'         => 'Berita Baru !',
-                'body'          => 'Disini akan menampilkan judul berita baru',
-                'click_action'  => 'OPEN_ACTIVITY'
-            ])
-            ->send();
+        // //push notifications firebase
+        // fcm()
+        //     ->toTopic('push-notifications')
+        //     ->priority('normal')
+        //     ->timeToLive(0)
+        //     ->notification([
+        //         'titel'         => 'Berita Baru !',
+        //         'body'          => 'Disini akan menampilkan judul berita baru',
+        //         'click_action'  => 'OPEN_ACTIVITY'
+        //     ])
+        //     ->send();
 
-        if($book) {
+        if ($book) {
             //return success with Api Resource
             return new BookResource(true, 'Data book Berhasil Disimpan!', $book);
         }
@@ -106,9 +106,9 @@ class BookController extends Controller
     public function show($id)
     {
         //get book$book
-        $book = book::with('category')->whereId($id)->first();
+        $book = Book::whereId($id)->first();
 
-        if($book) {
+        if ($book) {
             //return success with Api resource
             return new BookResource(true, 'Detail Data book', $book);
         }
@@ -130,7 +130,7 @@ class BookController extends Controller
          * validate request
          */
         $validator = Validator::make($request->all(), [
-            'titel'          => 'required|unique:books,titel,'.$book->id,
+            'title'          => 'required|unique:books,titel,' . $book->id,
             'category_id'    => 'required',
             'content'        => 'required'
         ]);
@@ -139,43 +139,43 @@ class BookController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-            //check image update
-            if ($request->file('image')) {
-            
-                //remove old image
-                Storage::disk('local')->delete('public/books/'.basename($book->image));
+        //check image update
+        if ($request->file('image')) {
 
-                //upload new image
-                $image = $request->file('image');
-                $image->storeAs('public/books', $image->hashName());
+            //remove old image
+            Storage::disk('local')->delete('public/books/' . basename($book->image));
 
-                $book->update([
-                    'title' => $request->input('title'),
-                    'synopsis' => $request->input('synopsis'),
-                    'isbn' => $request->input('isbn'),
-                    'writer' => $request->input('writer'),
-                    'page_amount' => $request->input('page_amount'),
-                    'stock_amount' => $request->input('stock_amount'),
-                    'published' => $request->input('published'),
-                    'category' => $request->input('category'),
-                    'image' => $image->hashName(),
-                    'status' => $request->input('status'),
-                ]);
+            //upload new image
+            $image = $request->file('image');
+            $image->storeAs('public/books', $image->hashName());
 
-                $book->update([
-                    'title' => $request->input('title'),
-                    'synopsis' => $request->input('synopsis'),
-                    'isbn' => $request->input('isbn'),
-                    'writer' => $request->input('writer'),
-                    'page_amount' => $request->input('page_amount'),
-                    'stock_amount' => $request->input('stock_amount'),
-                    'published' => $request->input('published'),
-                    'category' => $request->input('category'),
-                    'status' => $request->input('status'),
-                ]);
-            }
+            $book->update([
+                'title' => $request->input('title'),
+                'synopsis' => $request->input('synopsis'),
+                'isbn' => $request->input('isbn'),
+                'writer' => $request->input('writer'),
+                'page_amount' => $request->input('page_amount'),
+                'stock_amount' => $request->input('stock_amount'),
+                'published' => $request->input('published'),
+                'category' => $request->input('category'),
+                'image' => $image->hashName(),
+                'status' => $request->input('status'),
+            ]);
 
-        if($book) {
+            $book->update([
+                'title' => $request->input('title'),
+                'synopsis' => $request->input('synopsis'),
+                'isbn' => $request->input('isbn'),
+                'writer' => $request->input('writer'),
+                'page_amount' => $request->input('page_amount'),
+                'stock_amount' => $request->input('stock_amount'),
+                'published' => $request->input('published'),
+                'category' => $request->input('category'),
+                'status' => $request->input('status'),
+            ]);
+        }
+
+        if ($book) {
             //ruturn success with Api Resource
             return new BookResource(true, 'Data book Berhasil Diupdate!', $book);
         }
@@ -193,10 +193,10 @@ class BookController extends Controller
     public function destroy(book $book)
     {
         //remove image
-        Storage::disk('local')->delete('public/books/'.basename($book->image));
+        Storage::disk('local')->delete('public/books/' . basename($book->image));
 
         //delete 
-        if($book->delete()) {
+        if ($book->delete()) {
             //return success with Api Resource
             return new BookResource(true, 'Data book Berhasil Dihapus!', null);
         }

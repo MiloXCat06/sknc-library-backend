@@ -6,72 +6,67 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use App\Models\BookView;
 use App\Models\Borrow;
-use Illuminate\Http\Request;
-use Carbon\Carbon; //untuk datetime
-use App\Models\User;
 use App\Models\Restore;
-use Illuminate\Support\Facades\DB; //untuk query database
+use App\Models\User;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    /**
-     * Handle the incoming request.
-     */
-    public function __invoke(Request $request)
+    public function index ()
     {
-            //count book
-            $books = Book::count();
-            
-            //count borrow
-            $borrows = Borrow::count();
+        $this->middleware('auth'); // Middleware untuk memastikan pengguna sudah terautentikasi
+        $this->middleware('role:admin'); // Middleware untuk memastikan pengguna memiliki peran admin
+        $this->middleware('can:view_data'); // Middleware untuk memastikan pengguna memiliki izin untuk melihat data
+    }
 
-            //count restore
-            $restores = Restore::count();
+    public function getAllData()
+    {
+        $books = $this->getBooks();
+        $borrows = $this->getBorrows();
+        $restores = $this->getRestores();
+        $users = $this->getUsers();
 
-            //count users
-            $users = User::count();
+        return response()->json([
+            'books' => $books,
+            'borrows' => $borrows,
+            'restores' => $restores,
+            'users' => $users
+        ]);
+    }
 
-            /**
-            * get views book at 30 days
-            */
-            $book_views = BookView::select([
-            //count id
-            DB::raw('count(id) as count'),
+    protected function getBooks()
+    {
+        $books = Book::all();
 
-            //get day from created at
-            DB::raw('DATE(created_at) as day')
+        return response()->json([
+            'books' => $books,
+        ]);
+    }
 
-            //group by "day"
-            ])->groupBy('day')
+    protected function getBorrows()
+    {
+        $borrows = Borrow::all();
 
-            //get data 30 days with carbon
-            ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->get();
+        return response()->json([
+            'borrows' => $borrows,
+        ]);
+    }
 
-            if(count($book_views)) {
-            foreach ($book_views as $result) {
-            $count[]    = (int) $result->count;
-            $day[]      = $result->day;
-            }
-            }else {
-            $count[] = "";
-            $day[] = "";
-            }
+    protected function getRestores()
+    {
+        $restores = Restore::all();
+        
+        return response()->json([
+            'restores' => $restores,
+        ]);
+    }
 
-            //return response json
-            return response()->json([
-            'success'   => true,
-            'message'   => 'List Data on Dashboard',
-            'data'      => [
-                'books'         => $books,
-                'borrows'       => $borrows,
-                'restores'      => $restores,
-                'users'         => $users,
-                'book_views'    => [
-                    'count'     => $count,
-                    'days'      => $day
-                ]
-            ]   
+    protected function getUsers()
+    {
+        $users = User::all();
+
+        return response()->json([
+            'users' => $users,
         ]);
     }
 }

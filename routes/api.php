@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\BookController;
-use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\DashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,28 +23,28 @@ use Illuminate\Support\Facades\Route;
 
 // Exclude login and register routes from auth:api middleware
 Route::post('/login', [App\Http\Controllers\Api\Auth\LoginController::class, 'index']);
-Route::post('/register', [App\Http\Controllers\Api\Admin\UserController::class, 'store']);
+Route::post('/register', [UserController::class, 'store']);
 
 // Apply auth:api middleware to all routes
 Route::middleware('auth:api')->group(function () {
 
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard', [DashboardController::class, 'getAllData']);
 
     Route::post('/logout', [App\Http\Controllers\Api\Auth\LoginController::class, 'logout']);
 
     Route::prefix('user')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->middleware(['permission:users.index', 'role:admin,pustakawan']);
+        Route::get('/', [UserController::class, 'index'])->middleware(['permission:users.index', 'role:admin|pustakawan']);
         Route::get('/{id}', [UserController::class, 'show'])->middleware('permission:users.index');
         Route::post('/create', [UserController::class, 'store'])->middleware('permission:users.create');
         Route::put('/{id}/update', [UserController::class, 'update'])->middleware('permission:users.edit');
-        Route::delete('/{id}', [UserController::class, 'destroy'])->middleware(['permission:users.delete', 'role:admin,pustakawan']);
+        Route::delete('/{id}', [UserController::class, 'destroy'])->middleware(['permission:users.delete', 'role:admin|pustakawan']);
     });
 
     Route::prefix('book')->group(function () {
-        Route::get('/', [BookController::class, 'index'])->middleware(['permission:users.index']);
-        Route::get('/{id}', [BookController::class, 'show'])->middleware('permission:users.index');
-        Route::post('/create', [BookController::class, 'store'])->middleware(['permission:users.create', 'role:admin,pustakawan']);
-        Route::put('/{id}/update', [BookController::class, 'update'])->middleware(['permission:users.edit', 'role:admin,pustakawan']);
-        Route::delete('/{id}', [BookController::class, 'destroy'])->middleware(['permission:users.delete', 'role:admin,pustakawan']);
+        Route::get('/', [BookController::class, 'index'])->middleware(['permission:books.index']);
+        Route::get('/{id}', [BookController::class, 'show'])->middleware('permission:books.index');
+        Route::post('/create', [BookController::class, 'store'])->middleware(['permission:books.create', 'role:admin|pustakawan']);
+        Route::put('/{id}/update', [BookController::class, 'update'])->middleware(['permission:books.edit', 'role:admin|pustakawan']);
+        Route::delete('/{id}', [BookController::class, 'destroy'])->middleware(['permission:books.delete', 'role:admin|pustakawan']);
     });
 });

@@ -3,12 +3,14 @@
 use App\Http\Controllers\Api\Admin\BookController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\BorrowController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+dpraer
+
 |--------------------------------------------------------------------------
 |
 | Here is where you can register API routes for your application. These
@@ -46,5 +48,13 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/create', [BookController::class, 'store'])->middleware(['permission:books.create', 'role:admin|pustakawan']);
         Route::put('/{id}/update', [BookController::class, 'update'])->middleware(['permission:books.edit', 'role:admin|pustakawan']);
         Route::delete('/{id}', [BookController::class, 'destroy'])->middleware(['permission:books.delete', 'role:admin|pustakawan']);
+    });
+
+    Route::prefix('borrow')->group(function () {
+        Route::get('/', [BorrowController::class, 'index'])->middleware(['permission:borrowss.index']);
+        Route::get('/{id}', [BorrowController::class, 'show'])->middleware('permission:borrowss.index');
+        Route::post('/create', [BorrowController::class, 'store'])->middleware(['permission:borrows.create', ]);
+        Route::put('/{id}/update', [BorrowController::class, 'update'])->middleware(['permission:borrowss.edit']);
+        Route::delete('/{id}', [BorrowController::class, 'destroy'])->middleware(['permission:borrowss.delete']);
     });
 });

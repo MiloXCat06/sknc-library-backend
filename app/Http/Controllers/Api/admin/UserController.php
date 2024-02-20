@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Resources\UserResource;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -51,22 +53,31 @@ class UserController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        //create user
+        // Fetch random image from Lorem Picsum
+        $response = Http::get('https://picsum.photos/200/300');
+        $imageName = time() . '.jpg'; // Generate unique image name
+        $imagePath = 'public/users/' . $imageName; // Path to store image
+
+        // Store image in the filesystem
+        Storage::put($imagePath, $response->body());
+
+        // Create user with image filename
         $user = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
-            'password' => bcrypt($request->password)
+            'password' => bcrypt($request->password),
+            'image'    => $imagePath, // Store only the filename in the database
         ]);
 
-        //assign role to user
+        // Assign role to user
         $user->assignRole($request->roles);
 
         if ($user) {
-            //return success with Api Resource
+            // Return success with Api Resource
             return new UserResource(true, 'Data User Berhasil Disimpan!', $user);
         }
 
-        //return failed with Api Resource
+        // Return failed with Api Resource
         return new UserResource(false, 'Data User Gagal Disimpan!', null);
     }
 
@@ -76,10 +87,10 @@ class UserController extends Controller
      * @param int $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         //get user
-        $user = User::with('roles')->findOrFail($id)->first();
+        $user = User::with('roles')->find($request->id);
 
         if ($user) {
             //return success with Api resource
@@ -90,58 +101,58 @@ class UserController extends Controller
         return new UserResource(false, 'Detail Data User Tidak Ditemukan!', null);
     }
 
-    /**
-     * Update the specified resource in storage.
-     * 
-     * @param \Illuminate\Http\Request $request
-     * @param int $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, User $user, $id)
+    public function update(Request $request, $id)
     {
-        // Mengambil kembali data user setelah update
-        $user = User::find($id);
+        // Mengambil data user yang akan diupdate
+        $user = User::findOrFail($id);
 
         /**
-         * validate request
+         * Validate request
          */
         $validator = Validator::make($request->all(), [
             'name'           => 'required',
             'email'          => 'required|unique:users,email,' . $user->id,
-            'password'       => 'confirmed'
+            'password'       => 'sometimes|confirmed',
+            'image'          => 'sometimes|file|mimes:jpeg,jpg,png|max:2000',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        if (!$request->password) {
-
-            //update user without password
-            $user->update([
-                'name'  => $request->name,
-                'email' => $request->email
-            ]);
-        } else {
-            //update user with new password
-            $user->update([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => bcrypt($request->password)
-            ]);
+        // Mengupdate password jika dimasukkan
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
         }
 
-        if ($request->roles) {
+        // Mengupdate data user lainnya
+        $user->name = $request->name;
+        $user->email = $request->email;
+
+        // Mengupdate gambar jika dimasukkan
+        if ($request->hasFile('image')) {
+            // Menghapus gambar lama jika ada
+            Storage::delete($user->image);
+
+            // Mengunggah gambar baru
+            $imagePath = $request->file('image')->store('images', 'public');
+            $user->image = $imagePath;
+        }
+
+        // Menyinkronkan peran pengguna jika dimasukkan
+        if ($request->filled('roles')) {
             $user->syncRoles($request->roles);
         }
 
-        if ($user) {
-            // return success with Api Resource and updated user data
-            return new UserResource(true, 'Data User Berhasil Diupdate!', $user);
-        }
+        // Menyimpan perubahan pada pengguna
+        $user->save();
 
-        // return failed with Api Resource
-        return new UserResource(false, 'Data User Gagal Diupdate!', null);
+        // Mengembalikan respons sesuai keberhasilan atau kegagalan
+        if ($user) {
+            return new UserResource(true, 'Data User Berhasil Diupdate!', $user);
+        } else {
+            return new UserResource(false, 'Data User Gagal Diupdate!', null);
+        }
     }
 
     /**

@@ -103,7 +103,7 @@ class BookController extends Controller
      * @param int $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         //get book$book
         $book = Book::whereId($id)->first();

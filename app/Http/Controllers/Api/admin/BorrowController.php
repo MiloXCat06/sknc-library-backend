@@ -2,86 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\BorrowResource;
 use Illuminate\Http\Request;
-use App\Models\Book;
 use App\Models\Borrow;
-use App\Models\User;
+use App\Http\Resources\BorrowResource;
+use App\Http\Controllers\Controller;
 
-class PeminjamanController extends Controller
+class BorrowController extends Controller
 {
     public function index()
     {
-        // Tampilkan semua peminjaman
-        $borrows = Borrow::all()->withCount('views')->when(request()->search, function ($books) {
-            $books = $books->where('name', 'like', '%' . request()->search . '%');
-        })->latest()->paginate(5);
-
-        // Append query string to pagination links
-        $borrows->appends(['search' => request()->search]);
-
+        $borrows = Borrow::latest()->paginate(5);
         // Return with Api Resource
         return new BorrowResource(true, 'List Data Buku', $borrows);
     }
 
-    public function create()
-    {
-        // Tampilkan form untuk membuat peminjaman baru
-        $books = Book::all();
-        $members = User::all();
-        return view('peminjaman.create', compact('bukus', 'anggotas'));
-    }
-
     public function store(Request $request)
     {
-        // Validasi data yang dikirim
         $request->validate([
-            'id_book' => 'required',
-            'id_member' => 'required',
+            'book_id' => 'required',
+            'user_id' => 'required',
         ]);
 
-        // Simpan peminjaman baru ke database
-        Borrow::create($request->all());
+        $borrow = Borrow::create($request->all());
 
-        // Redirect ke halaman utama peminjaman dengan pesan sukses
-        return redirect()->route('peminjaman.index')
-            ->with('success', 'Peminjaman berhasil ditambahkan.');
+        if ($borrow) {
+            //return success with Api Resource
+            return new BorrowResource(true, 'Data book Berhasil Disimpan!', $borrow);
+        }
+
+        //return failed with Api Resource
+        return new BorrowResource(false, 'Data book Gagal Disimpan!', null);
     }
 
-    public function show(Borrow $borrow)
+    public function show(Borrow $borrow, $id)
     {
-        // Tampilkan detail peminjaman
-        return view('peminjaman.show', compact('peminjaman'));
+        //get borrow
+        $borrow = Borrow::whereId($id)->first();
+
+        if ($borrow) {
+            //return success with Api resource
+            return new BorrowResource(true, 'Detail Data book', $borrow);
+        }
+
+        //return failed with Api Resource
+        return new BorrowResource(false, 'Detail Data book Tidak Ditemukan!', null);
     }
 
-    public function edit(Borrow $borrow, Request $request)
+    public function update(Request $request, Borrow $borrow)
     {
-        // Tampilkan form untuk mengedit peminjaman
-        $books = Book::all();
-        $members = User::all();
-        return view('peminjaman.edit', compact('peminjaman', 'bukus', 'anggotas'));
-
-        // Validasi data yang dikirim
         $request->validate([
-            'id_buku' => 'required',
-            'id_anggota' => 'required',
+            'book_id' => 'required',
+            'user_id' => 'required',
         ]);
 
-        // Update peminjaman ke database
         $borrow->update($request->all());
 
-        // Redirect ke halaman utama peminjaman dengan pesan sukses
-        return redirect()->route('peminjaman.index')
-            ->with('success', 'Peminjaman berhasil diperbarui.');
+        if ($borrow) {
+            //ruturn success with Api Resource
+            return new BorrowResource(true, 'Data book Berhasil Diupdate!', $borrow);
+        }
+
+        //return failed with Api Resource
+        return new BorrowResource(false, 'Data book Gagal Diupdate!', null);
     }
 
     public function destroy(Borrow $borrow)
     {
-        // Hapus peminjaman dari database
-        $borrow->delete();
+        //delete 
+        if ($borrow->delete()) {
+            //return success with Api Resource
+            return new BorrowResource(true, 'Data book Berhasil Dihapus!', null);
+        }
 
-        // Redirect ke halaman utama peminjaman dengan pesan sukses
-        return redirect()->route('peminjaman.index')
-            ->with('success', 'Peminjaman berhasil dihapus.');
+        //return failed with Api Resource
+        return new BorrowResource(false, 'Data book Gagal Dihapus!', null);
     }
 }
